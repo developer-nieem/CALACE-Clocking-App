@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CAL ACE Team
 
-## Getting Started
+Workforce management for CAL ACE instructors and staff: scheduling, geolocation time clock, estimated hourly pay, facilities, onboarding, forms, and payroll/billing drafts.
 
-First, run the development server:
+On a phone, open the site in Chrome (Android) or Safari (iPhone) and install the web app: Android shows **Install app**; iPhone uses Share → **Add to Home Screen**. This is a PWA, not an App Store or Play Store native build. Time Clock still needs an internet connection.
+
+The app is a Next.js frontend and server backend. Deploy it on Vercel. Production data lives in Neon PostgreSQL.
+
+## Local demo
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Demo mode is the default (`DEMO_MODE=true`) and does not need a database.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Password for every demo account: `CalAce2026!`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Role | Email |
+| --- | --- |
+| Super Admin | superadmin@calace.team |
+| Admin | admin@calace.team |
+| Scheduler | scheduler@calace.team |
+| Instructor | maria.santos@calace.team |
+| Staff | olivia.wilson@calace.team |
 
-## Learn More
+## Local database with Docker Desktop
 
-To learn more about Next.js, take a look at the following resources:
+Postgres for this app runs on port **5433** so it does not conflict with other local databases.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run db:up
+npm run db:setup
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`.env.local` should contain:
 
-## Deploy on Vercel
+```
+DEMO_MODE=false
+NEXT_PUBLIC_DEMO_MODE=false
+DATABASE_URL=postgresql://calace:calace_dev@localhost:5433/calace_team
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`GET /api/health` returns `{ "database": "postgres" }`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Production databases must set `CALACE_SEED_DEMO=false` so an empty database is **not** filled with demo employees. Create the first admin using [docs/INITIAL-ADMIN.md](docs/INITIAL-ADMIN.md).
+
+## Deploy on Vercel with Neon
+
+1. Push this repository to GitHub.
+2. In Vercel, import the project. Framework preset: Next.js.
+3. In the Vercel project, open **Storage** and create a **Neon Postgres** database. Vercel adds `DATABASE_URL` automatically. Use the pooled connection string.
+4. Set these environment variables for Production and Preview:
+
+```
+DEMO_MODE=false
+NEXT_PUBLIC_DEMO_MODE=false
+DATABASE_URL=postgresql://...neon.tech/neondb?sslmode=require
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+CALACE_SEED_DEMO=false
+CRON_SECRET=generate-a-long-random-string
+```
+
+5. Deploy. The first request creates the tables in `lib/db/schema.sql`. It does **not** seed demo staff when `CALACE_SEED_DEMO=false`.
+
+You can also apply the schema yourself:
+
+```bash
+npm run db:setup
+```
+
+`GET /api/health` returns `{ "database": "neon" }` when the connection works.
+
+After seeding a **development** database, demo emails work with `CalAce2026!`. Production must use [docs/INITIAL-ADMIN.md](docs/INITIAL-ADMIN.md) instead. Coordinates are not hardcoded. Set workplace latitude, longitude, and geofence radius in Settings after deploy.
+
+Money is stored as `numeric(10,2)`. Clock timestamps are `timestamptz` in UTC and shown in `America/Los_Angeles`.
+
+Row Level Security isolates business tables by `app.organization_id`. The server sets that value on every database transaction, so one organization cannot read another organization's rows.
+
+## Scripts
+
+- `npm run dev` — local development
+- `npm run build` — production build used by Vercel
+- `npm run db:setup` — apply the Neon schema
+- `npm test` — time clock workflow tests
+- `npm run typecheck` — TypeScript
+- `npm run lint` — ESLint
+
+## Docs
+
+- [Deployment](docs/DEPLOYMENT.md)
+- [Backup and recovery](docs/BACKUP-RECOVERY.md)
+- [Production checklist](docs/PRODUCTION-CHECKLIST.md)
+- [Security](docs/SECURITY.md)
+- [Permissions](docs/PERMISSIONS.md)
+- [Permission matrix](docs/PERMISSION-MATRIX.md)
+- [Privacy data map](docs/PRIVACY-DATA-MAP.md)
+- [UAT checklist](docs/UAT-CHECKLIST.md)
+- [Initial admin](docs/INITIAL-ADMIN.md)
+- [Phase 6 audit](docs/PHASE-6-AUDIT.md)
+- [Post-launch](docs/POST-LAUNCH.md)
+- [Post-launch backlog](docs/POST-LAUNCH-BACKLOG.md)
+
+## Mobile / PWA
+
+`app/manifest.ts` plus `/icon-192.png`, `/icon-512.png`, and `/apple-touch-icon.png` make the site installable. A service worker at `/sw.js` caches icons only. Clock actions stay online-only.

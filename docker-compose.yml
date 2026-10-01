@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: calace-team-db
+    environment:
+      POSTGRES_USER: calace
+      POSTGRES_PASSWORD: calace_dev
+      POSTGRES_DB: calace_team
+    ports:
+      - "5433:5432"
+    volumes:
+      - calace_team_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calace -d calace_team"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  calace_team_pg:
