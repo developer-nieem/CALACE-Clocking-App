@@ -17,8 +17,8 @@ export async function GET() {
   }
 
   try {
-    const { ensureDatabase } = await import("@/lib/db/neon");
-    await ensureDatabase();
+    const { pingDatabase } = await import("@/lib/db/neon");
+    await pingDatabase();
     const database = process.env.DATABASE_URL?.includes("neon.tech") ? "neon" : "postgres";
     return NextResponse.json({
       ok: true,
@@ -27,9 +27,15 @@ export async function GET() {
       version,
       timestamp,
     });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const hint = /password authentication failed|28P01/i.test(message)
+      ? "DATABASE_URL password was rejected. Paste the current pooled Neon URL in Vercel and redeploy."
+      : /ENOTFOUND|ETIMEDOUT|ECONNREFUSED|timeout/i.test(message)
+        ? "Could not reach Neon. Confirm DATABASE_URL and that the database is not paused."
+        : "Database connection failed. Confirm DATABASE_URL in Vercel.";
     return NextResponse.json(
-      { ok: false, status: "error", database: "unavailable", timestamp },
+      { ok: false, status: "error", database: "unavailable", hint, timestamp },
       { status: 503 },
     );
   }

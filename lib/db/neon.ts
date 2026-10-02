@@ -1,7 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { neonConfig, Pool, type PoolClient } from "@neondatabase/serverless";
-import { Pool as PgPool } from "pg";
-import ws from "ws";
+import { Pool, type PoolClient } from "pg";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { DEMO_PASSWORD, ORG_ID } from "@/lib/constants";
 import { getOrganizationContext } from "@/lib/auth/org-context";
@@ -58,8 +56,6 @@ import type {
   TimeOffRequest,
 } from "@/types";
 
-neonConfig.webSocketConstructor = ws;
-
 const ORG_NAME = "CAL ACE Team";
 
 type QueryClient = Pick<PoolClient, "query">;
@@ -74,14 +70,17 @@ function getPool() {
     throw new Error("DATABASE_URL is not set. Add the Neon connection string on Vercel.");
   }
   if (!pool) {
-    if (connectionString.includes("neon.tech")) {
-      neonConfig.webSocketConstructor = ws;
-      pool = new Pool({ connectionString, max: 10 });
-    } else {
-      pool = new PgPool({ connectionString, max: 10 }) as unknown as Pool;
-    }
+    pool = new Pool({
+      connectionString,
+      max: 10,
+      ssl: connectionString.includes("neon.tech") ? { rejectUnauthorized: true } : undefined,
+    });
   }
   return pool;
+}
+
+export async function pingDatabase() {
+  await getPool().query("select 1");
 }
 
 function defaultHash() {
@@ -159,7 +158,12 @@ export function ensureDatabase() {
   return ready;
 }
 
-async function prepareDatabase() {
+async function schemaReady() {
+  const result = await getPool().query<{ name: string | null }>("select to_regclass('public.profiles') as name");
+  return Boolean(result.rows[0]?.name);
+}
+
+async function applySchema() {
   const database = getPool();
   try {
     await database.query(schemaSql);
@@ -171,6 +175,12 @@ async function prepareDatabase() {
     for (const statement of statements) {
       await database.query(statement);
     }
+  }
+}
+
+async function prepareDatabase() {
+  if (!(await schemaReady())) {
+    await applySchema();
   }
   await withOrg(async (client) => {
     await client.query("select pg_advisory_xact_lock(7042001)");
