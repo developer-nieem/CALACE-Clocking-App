@@ -33,7 +33,7 @@ import {
   updateWorkLocation,
 } from "@/lib/db/settings";
 import { ClockActionError } from "@/lib/time-clock/service";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, withSessionOrganization } from "@/lib/auth/session";
 import { runWithOrganizationContext } from "@/lib/auth/org-context";
 import { userFacingDatabaseError } from "@/lib/phase7/domain";
 import { logEvent } from "@/lib/monitoring";
@@ -43,7 +43,7 @@ export async function inviteUserAction(input: unknown) {
   const limit = await rateLimit("invite-user");
   if (!limit.success) return { error: RATE_LIMIT_MESSAGE };
   try {
-    const user = await inviteUser(input);
+    const user = await withSessionOrganization(() => inviteUser(input));
     return { ok: true, user };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to invite user." };
@@ -52,7 +52,7 @@ export async function inviteUserAction(input: unknown) {
 
 export async function updateUserAction(input: unknown) {
   try {
-    const user = await updateUser(input);
+    const user = await withSessionOrganization(() => updateUser(input));
     return { ok: true, user };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to update user." };
@@ -61,7 +61,7 @@ export async function updateUserAction(input: unknown) {
 
 export async function deactivateUserAction(id: string) {
   try {
-    await setUserStatus(id, "inactive");
+    await withSessionOrganization(() => setUserStatus(id, "inactive"));
     return { ok: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to deactivate user." };
@@ -70,7 +70,7 @@ export async function deactivateUserAction(id: string) {
 
 export async function saveShiftAction(input: unknown, publish: boolean) {
   try {
-    return await saveShift(input, publish);
+    return await withSessionOrganization(() => saveShift(input, publish));
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to save shift." };
   }
@@ -78,7 +78,7 @@ export async function saveShiftAction(input: unknown, publish: boolean) {
 
 export async function deleteShiftAction(id: string) {
   try {
-    await deleteShift(id);
+    await withSessionOrganization(() => deleteShift(id));
     return { ok: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to delete shift." };
@@ -87,7 +87,7 @@ export async function deleteShiftAction(id: string) {
 
 export async function cancelShiftAction(id: string) {
   try {
-    const shift = await cancelShift(id);
+    const shift = await withSessionOrganization(() => cancelShift(id));
     return { ok: true, shift };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to cancel shift." };
@@ -96,7 +96,7 @@ export async function cancelShiftAction(id: string) {
 
 export async function duplicateShiftAction(id: string) {
   try {
-    const shift = await duplicateShift(id);
+    const shift = await withSessionOrganization(() => duplicateShift(id));
     return { ok: true, shift };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to duplicate shift." };
@@ -105,7 +105,7 @@ export async function duplicateShiftAction(id: string) {
 
 export async function publishShiftAction(id: string, publish: boolean) {
   try {
-    const shift = await publishShift(id, publish);
+    const shift = await withSessionOrganization(() => publishShift(id, publish));
     return { ok: true, shift };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to update shift status." };
@@ -114,7 +114,7 @@ export async function publishShiftAction(id: string, publish: boolean) {
 
 export async function copyPreviousWeekAction(anchorDate: string) {
   try {
-    const count = await copyPreviousWeek(anchorDate);
+    const count = await withSessionOrganization(() => copyPreviousWeek(anchorDate));
     return { ok: true, count };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to copy week." };
@@ -125,7 +125,7 @@ export async function applyAutoFillAction(
   assignments: Array<{ shiftId: string; instructorId: string }>,
 ) {
   try {
-    await applyAutoFill(assignments);
+    await withSessionOrganization(() => applyAutoFill(assignments));
     return { ok: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to apply proposals." };
@@ -258,7 +258,7 @@ export async function clockOutAction(location: DeviceLocation | null) {
 export async function correctTimeEntryAction(input: unknown) {
   try {
     const parsed = correctionSchema.parse(input);
-    await correctTimeEntry(parsed);
+    await withSessionOrganization(() => correctTimeEntry(parsed));
     return { ok: true as const };
   } catch (error) {
     return safeError(error, "Unable to correct time entry.");
@@ -268,7 +268,7 @@ export async function correctTimeEntryAction(input: unknown) {
 export async function updatePayRateAction(input: unknown) {
   try {
     const parsed = payRateSchema.parse(input);
-    const rate = await updateEmployeePayRate(parsed);
+    const rate = await withSessionOrganization(() => updateEmployeePayRate(parsed));
     return { ok: true as const, rate };
   } catch (error) {
     return safeError(error, "Unable to update pay rate.");
@@ -285,7 +285,7 @@ export async function updateClockSettingsAction(input: unknown) {
         allowUnscheduledClockIn: z.boolean(),
       })
       .parse(input);
-    await updateClockSettings(parsed);
+    await withSessionOrganization(() => updateClockSettings(parsed));
     return { ok: true as const };
   } catch (error) {
     return safeError(error, "Unable to update clock settings.");
@@ -303,7 +303,7 @@ export async function updateWorkLocationAction(input: unknown) {
         geolocationRequired: z.boolean(),
       })
       .parse(input);
-    await updateWorkLocation(parsed);
+    await withSessionOrganization(() => updateWorkLocation(parsed));
     return { ok: true as const };
   } catch (error) {
     return safeError(error, "Unable to update work location.");

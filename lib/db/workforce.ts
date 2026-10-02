@@ -37,9 +37,9 @@ function demoWorkforce(): WorkforceState {
   };
 }
 
-export async function readWorkforceState(): Promise<WorkforceState> {
+export async function readWorkforceState(organizationId?: string): Promise<WorkforceState> {
   if (!isDatabaseMode()) return demoWorkforce();
-  return (await loadWorkforce()).state;
+  return (await loadWorkforce(organizationId)).state;
 }
 
 export async function mutateWorkforceState<T>(

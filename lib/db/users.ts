@@ -10,7 +10,7 @@ import type { Profile } from "@/types";
 
 export async function listUsers() {
   const user = await requirePermission("users.read");
-  const state = await readWorkforceState();
+  const state = await readWorkforceState(user.organizationId);
   const scoped = isManager(user.roles) ? state.profiles : state.profiles.filter((profile) => profile.id === user.id);
   return paginate(scoped, 1, 500).items;
 }
@@ -21,7 +21,7 @@ export async function getUserById(id: string) {
     const { forbidden } = await import("next/navigation");
     forbidden();
   }
-  const state = await readWorkforceState();
+  const state = await readWorkforceState(user.organizationId);
   const profile = state.profiles.find((item) => item.id === id) ?? null;
   if (!profile) return null;
   if (denyCrossTenant(user.organizationId, profile.organizationId)) {
@@ -88,7 +88,7 @@ export async function inviteUser(input: unknown) {
       createdAt: new Date().toISOString(),
     });
     return created;
-  });
+  }, actor.organizationId);
   revalidatePath("/users");
   return profile;
 }
@@ -140,7 +140,7 @@ export async function updateUser(input: unknown) {
       createdAt: new Date().toISOString(),
     });
     return state.profiles[index];
-  });
+  }, actor.organizationId);
   revalidatePath("/users");
   revalidatePath(`/users/${parsed.id}`);
   return profile;
@@ -168,7 +168,7 @@ export async function setUserStatus(id: string, status: Profile["employmentStatu
       createdAt: new Date().toISOString(),
     });
     return current;
-  });
+  }, actor.organizationId);
   revalidatePath("/users");
   return profile;
 }

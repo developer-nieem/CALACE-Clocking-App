@@ -44,7 +44,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       permissions: [],
     },
     async () => {
-      const state = await readWorkforceState();
+      const state = await readWorkforceState(session.organizationId);
       const profile = state.profiles.find((item) => item.id === session.userId);
       if (!profile || profile.employmentStatus === "inactive" || profile.employmentStatus === "terminated" || profile.employmentStatus === "archived") {
         return null;
@@ -98,6 +98,19 @@ export async function requirePermission(permission: Permission): Promise<Session
     throw new Error("Forbidden");
   }
   return user;
+}
+
+export async function withSessionOrganization<T>(fn: (user: SessionUser) => Promise<T> | T): Promise<T> {
+  const user = await requireSession();
+  return runWithOrganizationContext(
+    {
+      userId: user.id,
+      organizationId: user.organizationId,
+      role: user.role,
+      permissions: user.permissions,
+    },
+    () => fn(user),
+  );
 }
 
 export function can(user: SessionUser, permission: Permission) {
