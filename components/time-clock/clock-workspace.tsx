@@ -213,10 +213,10 @@ export function ClockWorkspace({
   const cardOnly = variant === "card";
 
   return (
-    <div className={cardOnly ? "h-full" : "space-y-4"}>
-      <div className={cardOnly ? "h-full" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]"}>
-        <section className={`rounded-xl border border-border bg-card ${cardOnly ? "h-full" : ""}`}>
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+    <div className={cardOnly ? "h-full min-w-0" : "min-w-0 space-y-4"}>
+      <div className={cardOnly ? "h-full min-w-0" : "grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]"}>
+        <section className={`min-w-0 overflow-hidden rounded-xl border border-border bg-card ${cardOnly ? "h-full" : ""}`}>
+          <div className="flex flex-col gap-1 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
             <h2 className="text-base font-semibold text-primary">Today&apos;s clock</h2>
             <p className="text-sm text-muted-foreground">
               Total work hours today{" "}
@@ -225,17 +225,17 @@ export function ClockWorkspace({
               </span>
             </p>
           </div>
-          <div className="p-5">
+          <div className="p-4 sm:p-5">
             {active && activeTotals ? (
               <div className="space-y-3">
-                <div className="rounded-2xl bg-gradient-to-br from-sky-400 to-cyan-400 px-6 py-5 text-white">
-                  <div className="flex items-center gap-2 text-sm">
+                <div className="rounded-2xl bg-gradient-to-br from-sky-400 to-cyan-400 px-4 py-4 text-white sm:px-6 sm:py-5">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span>{onBreak ? "Break time" : "Work time on"}</span>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
+                    <span className="max-w-full truncate rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                       {todayShift?.title ?? "Shift"}
                     </span>
                   </div>
-                  <p suppressHydrationWarning className="mt-2 text-5xl font-semibold tracking-tight tabular-nums">
+                  <p suppressHydrationWarning className="mt-2 text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">
                     {now ? formatHms(onBreak ? activeTotals.breakSeconds : activeTotals.workedSeconds) : "00:00:00"}
                   </p>
                   <p className="mt-3 flex min-w-0 items-start gap-1 text-sm text-white">
@@ -248,7 +248,7 @@ export function ClockWorkspace({
                         className="whitespace-normal break-words text-white underline decoration-white/50"
                       />
                     ) : (
-                      <span>{workplace?.name ?? "Work location"}</span>
+                      <span className="break-words">{workplace?.name ?? "Work location"}</span>
                     )}
                   </p>
                   <p suppressHydrationWarning className="mt-1 text-sm text-white/80">
@@ -257,23 +257,23 @@ export function ClockWorkspace({
                     {now ? formatHm(todayWorked) : "00:00"}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <button
                     type="button"
                     disabled={pending}
                     onClick={() => perform(onBreak ? "end_break" : "start_break")}
-                    className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-50 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-100 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-100 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <TimerReset className="h-4 w-4" />
+                    <TimerReset className="h-4 w-4 shrink-0" />
                     {pending ? "Processing..." : onBreak ? "End break" : "Break"}
                   </button>
                   <button
                     type="button"
                     disabled={pending}
                     onClick={() => perform("clock_out")}
-                    className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-red-500 text-sm font-semibold text-white transition hover:bg-red-600 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-red-500 px-2 text-sm font-semibold text-white transition hover:bg-red-600 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <Clock3 className="h-4 w-4" />
+                    <Clock3 className="h-4 w-4 shrink-0" />
                     {pending ? "Processing..." : "End"}
                   </button>
                 </div>
@@ -307,13 +307,13 @@ export function ClockWorkspace({
                 </div>
               </div>
             ) : (
-              <div className="flex min-h-40 items-center justify-center gap-8 rounded-xl border border-dashed border-border bg-muted/30 px-6 py-8">
-                <div className="max-w-xs text-sm text-muted-foreground">
+              <div className="flex flex-col-reverse items-center gap-5 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 sm:flex-row sm:justify-center sm:gap-8 sm:px-6 sm:py-8">
+                <div className="w-full max-w-sm text-center text-sm text-muted-foreground sm:max-w-xs sm:text-left">
                   {todayShift ? (
                     <>
                       <p className="font-medium text-foreground">{todayShift.title}</p>
                       <p>{formatTimeRange(todayShift.startTime, todayShift.endTime)}</p>
-                      <p>{workplace?.name}</p>
+                      <p className="break-words">{workplace?.name}</p>
                     </>
                   ) : (
                     <p>Nothing&apos;s scheduled for today</p>
@@ -340,7 +340,7 @@ export function ClockWorkspace({
                   type="button"
                   disabled={pending || (!todayShift && !settings.allowUnscheduledClockIn)}
                   onClick={() => perform("clock_in")}
-                  className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-cyan-400 text-white shadow-md transition hover:from-sky-500 hover:to-cyan-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-cyan-400 text-white shadow-md transition hover:from-sky-500 hover:to-cyan-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 sm:h-28 sm:w-28"
                 >
                   <Clock3 className="h-5 w-5" />
                   <span className="mt-1 text-sm font-semibold">{pending ? "Processing..." : "Clock in"}</span>
@@ -377,14 +377,14 @@ export function ClockWorkspace({
 
       {cardOnly ? null : (
       <section className="rounded-xl border border-border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5 sm:py-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <h2 className="text-base font-semibold text-primary">Timesheet</h2>
             <div className="flex items-center gap-1 rounded-full border border-border px-2 py-1 text-sm">
               <button type="button" className="px-2" onClick={() => setRangeStart(addDays(rangeStart, -7))} aria-label="Previous range">
                 ‹
               </button>
-              <span>
+              <span className="whitespace-nowrap">
                 {rangeStart.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" })}
                 {" – "}
                 {rangeEnd.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" })}
@@ -395,13 +395,36 @@ export function ClockWorkspace({
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-6 px-5 py-3 text-sm">
+        <div className="flex flex-wrap gap-x-6 gap-y-2 px-4 py-3 text-sm sm:px-5">
           <Stat label="Regular" value={formatHm(sheet.regular)} />
           <Stat label="Overtime" value={formatHm(sheet.overtime)} />
           <Stat label="Paid time off" value="00:00" />
           <Stat label="Total paid hours" value={formatHm(sheet.worked)} />
         </div>
-        <div className="overflow-x-auto">
+        <div className="space-y-2 px-4 pb-4 md:hidden">
+          {sheet.weeks.some((week) => week.rows.some((row) => row.total !== "—")) ? (
+            sheet.weeks.flatMap((week) =>
+              week.rows
+                .filter((row) => row.total !== "—")
+                .map((row) => (
+                  <div key={row.key} className="rounded-lg border border-border px-3 py-3 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-medium">{row.dateLabel}</p>
+                      <p className="tabular-nums font-semibold">{row.total}</p>
+                    </div>
+                    <p className="mt-1 text-muted-foreground">
+                      {row.type} · {row.start ? clockTime(row.start, settings.timezone) : "—"}
+                      {row.end ? ` – ${clockTime(row.end, settings.timezone)}` : " – now"}
+                    </p>
+                    <p className="mt-1 break-words text-xs text-muted-foreground">{row.location}</p>
+                  </div>
+                )),
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground">No punches in this range.</p>
+          )}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="border-y border-border text-xs text-muted-foreground">
               <tr>

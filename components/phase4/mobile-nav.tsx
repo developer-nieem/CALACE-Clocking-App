@@ -32,11 +32,11 @@ export function MobileNav() {
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
       <div className="grid grid-cols-5">
         {links.map((link) => (
-          <Link key={link.href} href={link.href} className="min-h-11 px-1 py-3 text-center text-xs font-medium">
+          <Link key={link.href} href={link.href} className="flex min-h-11 items-center justify-center px-1 py-3 text-center text-[11px] font-medium leading-tight sm:text-xs">
             {link.label}
           </Link>
         ))}
-        <button type="button" className="min-h-11 px-1 py-3 text-xs font-medium" onClick={() => setOpen((value) => !value)}>
+        <button type="button" className="flex min-h-11 items-center justify-center px-1 py-3 text-[11px] font-medium sm:text-xs" onClick={() => setOpen((value) => !value)}>
           More
         </button>
       </div>
