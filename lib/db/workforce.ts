@@ -45,6 +45,7 @@ export async function readWorkforceState(organizationId?: string): Promise<Workf
 export async function mutateWorkforceState<T>(
   mutate: (state: WorkforceState) => T,
   organizationId?: string,
+  passwordHashes?: Map<string, string>,
 ): Promise<T> {
   if (!isDatabaseMode()) return mutate(demoWorkforce());
 
@@ -52,7 +53,7 @@ export async function mutateWorkforceState<T>(
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const loaded = await loadWorkforce(organizationId);
       const result = mutate(loaded.state);
-      const saved = await saveWorkforce(loaded.state, loaded.version, organizationId);
+      const saved = await saveWorkforce(loaded.state, loaded.version, organizationId, passwordHashes);
       if (saved) return result;
     }
     throw new Error("Could not save changes. Please retry.");

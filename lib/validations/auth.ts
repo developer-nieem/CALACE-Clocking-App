@@ -9,6 +9,7 @@ export const inviteUserSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email("Enter a valid email."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
   phone: z.string().optional(),
   employeeType: z.enum(["instructor", "staff"]),
   role: z.enum(["super_admin", "admin", "scheduler", "instructor", "staff"]),
@@ -22,9 +23,14 @@ export const inviteUserSchema = z.object({
   hireDate: z.string().optional().nullable(),
 });
 
-export const updateUserSchema = inviteUserSchema.extend({
+export const updateUserSchema = inviteUserSchema.omit({ password: true }).extend({
   id: z.string().uuid(),
   employmentStatus: z.enum(["active", "invited", "inactive", "terminated", "archived"]),
+  password: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() ?? "")
+    .refine((value) => value.length === 0 || value.length >= 8, "Password must be at least 8 characters."),
 });
 
 export const shiftSchema = z.object({

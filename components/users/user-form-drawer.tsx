@@ -50,8 +50,8 @@ export function InviteUserDrawer({
       positions={positions}
       departments={departments}
       locations={locations}
-      title="Invite user"
-      description="Send an invitation to a new CAL ACE team member."
+      title="Add employee"
+      description="Create a login for a new CAL ACE team member."
     />
   );
 }
@@ -76,9 +76,9 @@ export function UserFormDrawer({
   description: string;
 }) {
   const [pending, startTransition] = useTransition();
-  const [role, setRole] = useState<AppRole>(user?.roles[0] ?? "instructor");
+  const [role, setRole] = useState<AppRole>(user?.roles[0] ?? "staff");
   const [employeeType, setEmployeeType] = useState<EmployeeType>(
-    user?.employeeType ?? "instructor",
+    user?.employeeType ?? "staff",
   );
   const [payType, setPayType] = useState<PayType>(user?.payType ?? "hourly");
   const [positionId, setPositionId] = useState(user?.positionId ?? "");
@@ -101,11 +101,22 @@ export function UserFormDrawer({
             event.preventDefault();
             const form = new FormData(event.currentTarget);
             startTransition(async () => {
+              const password = String(form.get("password") ?? "");
+              const confirmPassword = String(form.get("confirmPassword") ?? "");
+              if (!user && password.length < 8) {
+                toast.error("Password must be at least 8 characters.");
+                return;
+              }
+              if (password && password !== confirmPassword) {
+                toast.error("Passwords do not match.");
+                return;
+              }
               const payload = {
                 id: user?.id,
                 firstName: String(form.get("firstName") ?? ""),
                 lastName: String(form.get("lastName") ?? ""),
                 email: String(form.get("email") ?? ""),
+                password,
                 phone: String(form.get("phone") ?? ""),
                 employeeType,
                 role,
@@ -129,7 +140,7 @@ export function UserFormDrawer({
                 : await inviteUserAction(payload);
               if ("error" in result && result.error) toast.error(result.error);
               else {
-                toast.success(user ? "User updated" : "Invitation created");
+                toast.success(user ? "User updated" : "Employee added");
                 onOpenChange(false);
               }
             });
@@ -140,6 +151,20 @@ export function UserFormDrawer({
             <Field label="Last name" name="lastName" defaultValue={user?.lastName} />
           </div>
           <Field label="Email" name="email" type="email" defaultValue={user?.email} />
+          <Field
+            label={user ? "New password (optional)" : "Password"}
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            required={!user}
+          />
+          <Field
+            label="Confirm password"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            required={!user}
+          />
           <Field label="Phone" name="phone" defaultValue={user?.phone ?? ""} />
           <div className="space-y-2">
             <Label>Employee Type</Label>
@@ -283,7 +308,7 @@ export function UserFormDrawer({
               Cancel
             </Button>
             <Button type="submit" className="flex-1" disabled={pending}>
-              {user ? "Save changes" : "Send invite"}
+              {user ? "Save changes" : "Add employee"}
             </Button>
           </div>
         </form>
@@ -298,12 +323,16 @@ function Field({
   type = "text",
   defaultValue,
   step,
+  autoComplete,
+  required,
 }: {
   label: string;
   name: string;
   type?: string;
   defaultValue?: string;
   step?: string;
+  autoComplete?: string;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -313,8 +342,9 @@ function Field({
         name={name}
         type={type}
         step={step}
+        autoComplete={autoComplete}
         defaultValue={defaultValue}
-        required={!["phone", "hireDate"].includes(name)}
+        required={required ?? !["phone", "hireDate"].includes(name)}
       />
     </div>
   );

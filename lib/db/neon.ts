@@ -349,7 +349,12 @@ export async function loadWorkforce(organizationId?: string) {
   }, organizationId);
 }
 
-export async function saveWorkforce(state: WorkforceState, version: number, organizationId?: string) {
+export async function saveWorkforce(
+  state: WorkforceState,
+  version: number,
+  organizationId?: string,
+  passwordHashes?: Map<string, string>,
+) {
   await ensureDatabase();
   return withOrg(async (client, orgId) => {
     const updated = await client.query(
@@ -359,7 +364,7 @@ export async function saveWorkforce(state: WorkforceState, version: number, orga
       [orgId, version],
     );
     if (updated.rowCount !== 1) return false;
-    await writeState(client, state, new Map(), orgId);
+    await writeState(client, state, passwordHashes ?? new Map(), orgId);
     return true;
   }, organizationId);
 }
@@ -449,6 +454,7 @@ async function writeState(
     `update profiles as saved
      set organization_id = incoming.organization_id,
          email = incoming.email,
+         password_hash = coalesce(incoming.password_hash, saved.password_hash),
          employee_type = incoming.employee_type,
          role = incoming.role,
          pay_type = incoming.pay_type,

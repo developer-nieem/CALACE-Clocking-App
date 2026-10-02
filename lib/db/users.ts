@@ -5,6 +5,7 @@ import { denyCrossTenant } from "@/lib/phase6/domain";
 import { paginate } from "@/lib/phase7/domain";
 import { changePayRate } from "@/lib/time-clock/service";
 import { mutateWorkforceState, readWorkforceState } from "@/lib/db/workforce";
+import { hashPassword } from "@/lib/auth/password";
 import { inviteUserSchema, updateUserSchema } from "@/lib/validations/user";
 import type { Profile } from "@/types";
 
@@ -45,11 +46,16 @@ export async function getLookups() {
 export async function inviteUser(input: unknown) {
   const actor = await requirePermission("users.invite");
   const parsed = inviteUserSchema.parse(input);
+  const passwordHash = await hashPassword(parsed.password);
+  const hashes = new Map<string, string>();
   const profile = await mutateWorkforceState((state) => {
+    if (state.profiles.some((item) => item.email.toLowerCase() === parsed.email.toLowerCase())) {
+      throw new Error("An employee with this email already exists.");
+    }
     const created: Profile = {
       id: crypto.randomUUID(),
       organizationId: actor.organizationId,
-      email: parsed.email,
+      email: parsed.email.toLowerCase(),
       firstName: parsed.firstName,
       lastName: parsed.lastName,
       phone: parsed.phone ?? null,
@@ -58,7 +64,7 @@ export async function inviteUser(input: unknown) {
       positionId: parsed.positionId ?? null,
       departmentId: parsed.departmentId ?? null,
       primaryLocationId: parsed.primaryLocationId ?? null,
-      employmentStatus: "invited",
+      employmentStatus: "active",
       hireDate: parsed.hireDate ?? null,
       payType: parsed.payType,
       hourlyRate: parsed.payType === "hourly" ? parsed.hourlyRate : null,
@@ -71,6 +77,7 @@ export async function inviteUser(input: unknown) {
       locationIds: [],
       roles: [parsed.role],
     };
+    hashes.set(created.id, passwordHash);
     state.profiles.unshift(created);
     if (created.payType === "hourly" && created.hourlyRate !== null) {
       changePayRate(state, actor.id, {
@@ -88,7 +95,7 @@ export async function inviteUser(input: unknown) {
       createdAt: new Date().toISOString(),
     });
     return created;
-  }, actor.organizationId);
+  }, actor.organizationId, hashes);
   revalidatePath("/users");
   return profile;
 }
@@ -96,6 +103,10 @@ export async function inviteUser(input: unknown) {
 export async function updateUser(input: unknown) {
   const actor = await requirePermission("users.manage");
   const parsed = updateUserSchema.parse(input);
+  const hashes = new Map<string, string>();
+  if (parsed.password) {
+    hashes.set(parsed.id, await hashPassword(parsed.password));
+  }
   const profile = await mutateWorkforceState((state) => {
     const index = state.profiles.findIndex((item) => item.id === parsed.id);
     if (index === -1) throw new Error("User not found.");
@@ -140,7 +151,7 @@ export async function updateUser(input: unknown) {
       createdAt: new Date().toISOString(),
     });
     return state.profiles[index];
-  }, actor.organizationId);
+  }, actor.organizationId, hashes);
   revalidatePath("/users");
   revalidatePath(`/users/${parsed.id}`);
   return profile;
