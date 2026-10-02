@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { InviteUserDrawer } from "@/components/users/user-form-drawer";
-import { deactivateUserAction } from "@/app/actions/workforce";
+import { deactivateUserAction, archiveUserAction, deleteUserAction } from "@/app/actions/workforce";
 import { roleLabel, type AppRole } from "@/lib/permissions";
 import { fullName, initials } from "@/lib/utils";
 import type { Department, Location, Position, Profile } from "@/types";
@@ -175,13 +175,48 @@ export function UsersTable({
                             disabled={pending}
                             onClick={() =>
                               startTransition(async () => {
+                                const result = await archiveUserAction(user.id);
+                                if ("error" in result && result.error) toast.error(result.error);
+                                else {
+                                  toast.success("Employee archived");
+                                  router.refresh();
+                                }
+                              })
+                            }
+                          >
+                            Archive
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={pending}
+                            onClick={() =>
+                              startTransition(async () => {
                                 const result = await deactivateUserAction(user.id);
                                 if ("error" in result && result.error) toast.error(result.error);
-                                else toast.success("User deactivated");
+                                else {
+                                  toast.success("User deactivated");
+                                  router.refresh();
+                                }
                               })
                             }
                           >
                             Deactivate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={pending}
+                            className="text-destructive"
+                            onClick={() =>
+                              startTransition(async () => {
+                                if (!window.confirm("Delete this employee permanently? This cannot be undone.")) return;
+                                const result = await deleteUserAction(user.id);
+                                if ("error" in result && result.error) toast.error(result.error);
+                                else {
+                                  toast.success("Employee deleted");
+                                  router.refresh();
+                                }
+                              })
+                            }
+                          >
+                            Delete
                           </DropdownMenuItem>
                         </>
                       ) : null}

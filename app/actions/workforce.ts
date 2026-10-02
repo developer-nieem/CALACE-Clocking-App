@@ -1,7 +1,7 @@
 "use server";
 
 import { rateLimit, rateLimitKey, RATE_LIMIT_MESSAGE } from "@/lib/security/rate-limit";
-import { inviteUser, setUserStatus, updateUser } from "@/lib/db/users";
+import { inviteUser, setUserStatus, updateUser, deleteUser } from "@/lib/db/users";
 import {
   applyAutoFill,
   cancelShift,
@@ -65,6 +65,27 @@ export async function deactivateUserAction(id: string) {
     return { ok: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to deactivate user." };
+  }
+}
+
+export async function archiveUserAction(id: string) {
+  try {
+    await withSessionOrganization(async () => {
+      const { terminateEmployee } = await import("@/lib/db/phase5");
+      await terminateEmployee({ userId: id, mode: "archived" });
+    });
+    return { ok: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to archive user." };
+  }
+}
+
+export async function deleteUserAction(id: string) {
+  try {
+    await withSessionOrganization(() => deleteUser(id));
+    return { ok: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to delete user." };
   }
 }
 

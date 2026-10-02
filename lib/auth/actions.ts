@@ -73,10 +73,22 @@ export async function loginAction(
 export async function logoutAction() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  if (token && isDatabaseMode()) {
-    await deleteSession(token);
+  try {
+    if (token && isDatabaseMode()) {
+      await deleteSession(token);
+    }
+  } catch {
+    /* still clear the local session */
   }
-  cookieStore.delete(DEMO_COOKIE);
-  cookieStore.delete(SESSION_COOKIE);
+  const expired = {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 0,
+    expires: new Date(0),
+  };
+  cookieStore.set(SESSION_COOKIE, "", expired);
+  cookieStore.set(DEMO_COOKIE, "", expired);
   redirect("/login");
 }

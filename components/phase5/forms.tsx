@@ -40,6 +40,7 @@ import {
   unlockPayPeriodAction,
   acknowledgePolicyAction,
 } from "@/app/actions/phase5";
+import { deleteUserAction } from "@/app/actions/workforce";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -837,12 +838,53 @@ export function OrgSettingsForm() {
 export function TerminateButtons({ userId }: { userId: string }) {
   const [pending, start] = useTransition();
   return (
-    <div className="flex gap-2">
-      <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { await terminateEmployeeAction({ userId, mode: "archived" }); toast.success("Archived. History kept."); })}>
+    <div className="flex flex-wrap gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const result = await terminateEmployeeAction({ userId, mode: "archived" });
+            if (result.ok) toast.success("Archived. History kept.");
+            else toast.error(result.error);
+          })
+        }
+      >
         Archive
       </Button>
-      <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { await terminateEmployeeAction({ userId, mode: "terminated" }); toast.success("Terminated. Clock-in and future scheduling blocked."); })}>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const result = await terminateEmployeeAction({ userId, mode: "terminated" });
+            if (result.ok) toast.success("Terminated. Clock-in and future scheduling blocked.");
+            else toast.error(result.error);
+          })
+        }
+      >
         Terminate
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        className="text-destructive"
+        onClick={() =>
+          start(async () => {
+            if (!window.confirm("Delete this employee permanently? This cannot be undone.")) return;
+            const result = await deleteUserAction(userId);
+            if ("error" in result && result.error) toast.error(result.error);
+            else {
+              toast.success("Employee deleted");
+              window.location.href = "/users";
+            }
+          })
+        }
+      >
+        Delete
       </Button>
     </div>
   );

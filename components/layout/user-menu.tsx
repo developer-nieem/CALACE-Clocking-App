@@ -18,7 +18,9 @@ import type { SessionUser } from "@/types";
 
 export function UserMenu({ user }: { user: SessionUser }) {
   return (
-    <DropdownMenu>
+    <>
+      <form id="calace-sign-out" action={logoutAction} className="hidden" />
+      <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-2 rounded-full outline-none">
         <Avatar>
           {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
@@ -52,15 +54,18 @@ export function UserMenu({ user }: { user: SessionUser }) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <form action={logoutAction}>
-          <button type="submit" className="w-full">
-            <DropdownMenuItem>
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </DropdownMenuItem>
-          </button>
-        </form>
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault();
+            const form = document.getElementById("calace-sign-out") as HTMLFormElement | null;
+            form?.requestSubmit();
+          }}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }

@@ -943,8 +943,9 @@ export async function terminateEmployee(input: { userId: string; mode: "archived
       }
     }
     audit(state, actor.id, input.mode === "terminated" ? "employee_terminated" : "employee_archived", "user", profile.id);
-  });
+  }, actor.organizationId);
   revalidatePath("/users");
+  revalidatePath(`/users/${input.userId}`);
 }
 
 export async function assertTimeEditAllowed(user: SessionUser, workDate: string) {

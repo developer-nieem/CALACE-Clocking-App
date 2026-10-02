@@ -1047,6 +1047,13 @@ export async function deleteSession(token: string) {
   });
 }
 
+export async function deleteSessionsForUser(userId: string) {
+  await ensureDatabase();
+  await withSystemClient(async (client) => {
+    await client.query("delete from sessions where user_id = $1", [userId]);
+  });
+}
+
 export async function listOrganizationIds() {
   await ensureDatabase();
   return withSystemClient(async (client) => {

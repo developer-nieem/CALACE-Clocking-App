@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { logoutAction } from "@/lib/auth/actions";
 
 const links = [
   { href: "/dashboard", label: "Home" },
@@ -47,6 +48,11 @@ export function MobileNav() {
               {link.label}
             </Link>
           ))}
+          <form action={logoutAction} className="col-span-2">
+            <button type="submit" className="w-full rounded-lg bg-muted px-3 py-2 text-left text-sm">
+              Sign out
+            </button>
+          </form>
         </div>
       ) : null}
     </nav>

@@ -1,6 +1,7 @@
 "use server";
 
 import { rateLimit, RATE_LIMIT_MESSAGE } from "@/lib/security/rate-limit";
+import { withSessionOrganization } from "@/lib/auth/session";
 import {
   acknowledgeAnnouncement,
   addFacilityLocation,
@@ -167,7 +168,12 @@ export async function saveOrganizationProfileAction(input: Parameters<typeof sav
 }
 
 export async function terminateEmployeeAction(input: { userId: string; mode: "archived" | "terminated" }) {
-  return terminateEmployee(input);
+  try {
+    await withSessionOrganization(() => terminateEmployee(input));
+    return { ok: true as const };
+  } catch (error) {
+    return { ok: false as const, error: error instanceof Error ? error.message : "Unable to update employee." };
+  }
 }
 
 export async function savePolicyAction(input: { title: string; content: string }) {

@@ -183,3 +183,40 @@ export async function setUserStatus(id: string, status: Profile["employmentStatu
   revalidatePath("/users");
   return profile;
 }
+
+export async function deleteUser(id: string) {
+  const actor = await requirePermission("users.manage");
+  if (actor.id === id) {
+    throw new Error("You cannot delete your own account.");
+  }
+  await mutateWorkforceState((state) => {
+    const index = state.profiles.findIndex((item) => item.id === id);
+    if (index === -1) throw new Error("User not found.");
+    const removedEntries = new Set(state.timeEntries.filter((item) => item.userId === id).map((item) => item.id));
+    state.profiles.splice(index, 1);
+    state.timeEntries = state.timeEntries.filter((item) => item.userId !== id);
+    state.timeBreaks = state.timeBreaks.filter((item) => !removedEntries.has(item.timeEntryId));
+    state.timeEntryEdits = state.timeEntryEdits.filter((item) => !removedEntries.has(item.timeEntryId));
+    state.payRates = state.payRates.filter((item) => item.userId !== id);
+    state.timeOff = state.timeOff.filter((item) => item.userId !== id);
+    state.availability = state.availability.filter((item) => item.userId !== id);
+    state.documents = state.documents.filter((item) => item.userId !== id);
+    for (const shift of state.shifts) {
+      shift.instructorIds = shift.instructorIds.filter((userId) => userId !== id);
+    }
+    for (const task of state.tasks) {
+      task.assigneeIds = task.assigneeIds.filter((userId) => userId !== id);
+    }
+    state.activity.unshift({
+      id: crypto.randomUUID(),
+      actorId: actor.id,
+      action: "deleted_user",
+      entityType: "user",
+      entityId: id,
+      createdAt: new Date().toISOString(),
+    });
+  }, actor.organizationId);
+  const { deleteSessionsForUser } = await import("@/lib/db/neon");
+  await deleteSessionsForUser(id);
+  revalidatePath("/users");
+}
