@@ -16,7 +16,7 @@ const demoAccounts = [
   ["Olivia Wilson (Staff)", "olivia.wilson@calace.team"],
 ];
 
-export function LoginForm() {
+export function LoginForm({ demoMode = false }: { demoMode?: boolean }) {
   const [state, formAction, pending] = useActionState(loginAction, {} as AuthState);
 
   return (
@@ -40,7 +40,8 @@ export function LoginForm() {
               id="email"
               name="email"
               type="email"
-              defaultValue="admin@calace.team"
+              autoComplete="username"
+              defaultValue={demoMode ? "admin@calace.team" : ""}
               required
             />
           </div>
@@ -50,7 +51,8 @@ export function LoginForm() {
               id="password"
               name="password"
               type="password"
-              defaultValue={DEMO_PASSWORD}
+              autoComplete="current-password"
+              defaultValue={demoMode ? DEMO_PASSWORD : ""}
               required
             />
           </div>
@@ -59,17 +61,19 @@ export function LoginForm() {
             {pending ? "Signing in…" : "Sign in"}
           </Button>
         </form>
-        <div className="mt-6 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-          <p className="font-medium text-foreground">Demo accounts</p>
-          <p className="mt-1">Password: {DEMO_PASSWORD}</p>
-          <ul className="mt-2 space-y-1">
-            {demoAccounts.map(([label, email]) => (
-              <li key={email}>
-                {label}: {email}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {demoMode ? (
+          <div className="mt-6 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">Demo accounts</p>
+            <p className="mt-1">Password: {DEMO_PASSWORD}</p>
+            <ul className="mt-2 space-y-1">
+              {demoAccounts.map(([label, email]) => (
+                <li key={email}>
+                  {label}: {email}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
