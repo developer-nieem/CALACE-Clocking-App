@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireSession } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { TimeClockSettings } from "@/components/settings/time-clock-settings";
+import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { ExtraSettingsForms, OrgSettingsForm } from "@/components/phase5/forms";
 import { getTimeClockData } from "@/lib/db/time-clock";
 
@@ -47,6 +48,17 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Update password</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Enter your current password, then choose a new one (at least 8 characters).
+          </p>
+          <ChangePasswordForm />
+        </CardContent>
+      </Card>
       {user.permissions.includes("settings.manage") ? (
         <>
           <Card>

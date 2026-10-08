@@ -1054,6 +1054,28 @@ export async function deleteSessionsForUser(userId: string) {
   });
 }
 
+export async function readPasswordHash(userId: string, organizationId: string) {
+  await ensureDatabase();
+  return withOrg(async (client) => {
+    const result = await client.query<{ password_hash: string }>(
+      "select password_hash from profiles where id = $1 and organization_id = $2",
+      [userId, organizationId],
+    );
+    return result.rows[0]?.password_hash ?? null;
+  }, organizationId);
+}
+
+export async function setPasswordHash(userId: string, organizationId: string, passwordHash: string) {
+  await ensureDatabase();
+  return withOrg(async (client) => {
+    const result = await client.query(
+      "update profiles set password_hash = $1, updated_at = now() where id = $2 and organization_id = $3",
+      [passwordHash, userId, organizationId],
+    );
+    if (result.rowCount !== 1) throw new Error("Could not update password.");
+  }, organizationId);
+}
+
 export async function listOrganizationIds() {
   await ensureDatabase();
   return withSystemClient(async (client) => {

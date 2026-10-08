@@ -5,8 +5,11 @@ import { denyCrossTenant } from "@/lib/phase6/domain";
 import { paginate } from "@/lib/phase7/domain";
 import { changePayRate } from "@/lib/time-clock/service";
 import { mutateWorkforceState, readWorkforceState } from "@/lib/db/workforce";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { inviteUserSchema, updateUserSchema } from "@/lib/validations/user";
+import { changePasswordSchema } from "@/lib/validations/auth";
+import { readPasswordHash, setPasswordHash } from "@/lib/db/neon";
+import { isDatabaseMode } from "@/lib/env";
 import type { Profile } from "@/types";
 
 export async function listUsers() {
@@ -219,4 +222,18 @@ export async function deleteUser(id: string) {
   const { deleteSessionsForUser } = await import("@/lib/db/neon");
   await deleteSessionsForUser(id);
   revalidatePath("/users");
+}
+
+export async function changeOwnPassword(input: unknown) {
+  const user = await requireSession();
+  const parsed = changePasswordSchema.parse(input);
+  if (!isDatabaseMode()) {
+    throw new Error("Password changes are saved when the app is connected to the database.");
+  }
+  const stored = await readPasswordHash(user.id, user.organizationId);
+  if (!stored || !(await verifyPassword(parsed.currentPassword, stored))) {
+    throw new Error("Current password is incorrect.");
+  }
+  const nextHash = await hashPassword(parsed.newPassword);
+  await setPasswordHash(user.id, user.organizationId, nextHash);
 }

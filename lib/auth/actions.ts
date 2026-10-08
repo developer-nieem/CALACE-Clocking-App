@@ -7,7 +7,9 @@ import { findDemoAccount } from "@/lib/demo/store";
 import { authenticate, createSession, deleteSession } from "@/lib/db/neon";
 import { isDatabaseMode } from "@/lib/env";
 import { rateLimit, rateLimitKey, RATE_LIMIT_MESSAGE } from "@/lib/security/rate-limit";
-import { loginSchema } from "@/lib/validations/auth";
+import { changePasswordSchema, loginSchema } from "@/lib/validations/auth";
+import { withSessionOrganization } from "@/lib/auth/session";
+import { changeOwnPassword } from "@/lib/db/users";
 
 export type AuthState = {
   error?: string;
@@ -91,4 +93,23 @@ export async function logoutAction() {
   cookieStore.set(SESSION_COOKIE, "", expired);
   cookieStore.set(DEMO_COOKIE, "", expired);
   redirect("/login");
+}
+
+export async function changePasswordAction(input: unknown) {
+  const headerList = await headers();
+  const ip = headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const parsed = changePasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the password fields." };
+  }
+  try {
+    return await withSessionOrganization(async (user) => {
+      const limited = await rateLimit(rateLimitKey(["change-password", user.id, ip]), 8, 60_000);
+      if (!limited.success) return { error: RATE_LIMIT_MESSAGE };
+      await changeOwnPassword(parsed.data);
+      return { ok: true as const };
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to update password." };
+  }
 }

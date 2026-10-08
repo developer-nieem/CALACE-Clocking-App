@@ -15,6 +15,7 @@ import { getTimeClockData } from "@/lib/db/time-clock";
 import { fullName, formatTimeRange } from "@/lib/utils";
 import { roleLabel } from "@/lib/permissions";
 import { TerminateButtons } from "@/components/phase5/forms";
+import { ChangePasswordForm } from "@/components/settings/change-password-form";
 
 export default async function UserDetailPage({
   params,
@@ -102,6 +103,19 @@ export default async function UserDetailPage({
                 ))}
               </CardContent>
             </Card>
+            {actor.id === profile.id ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Update password</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Enter your current password, then choose a new one (at least 8 characters).
+                  </p>
+                  <ChangePasswordForm />
+                </CardContent>
+              </Card>
+            ) : null}
             {clockData.canManagePay ||
             (actor.id === profile.id && actor.permissions.includes("pay.read_own")) ? (
               <PayInformation
