@@ -5,12 +5,15 @@ import { requireSession } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { TimeClockSettings } from "@/components/settings/time-clock-settings";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
+import { SmtpSettingsForm } from "@/components/settings/smtp-settings-form";
 import { ExtraSettingsForms, OrgSettingsForm } from "@/components/phase5/forms";
 import { getTimeClockData } from "@/lib/db/time-clock";
+import { getSmtpSettingsPublic } from "@/lib/db/settings";
 
 export default async function SettingsPage() {
   const user = await requireSession();
   const clock = await getTimeClockData();
+  const smtp = user.permissions.includes("settings.manage") ? await getSmtpSettingsPublic() : null;
 
   return (
     <div className="space-y-6">
@@ -73,6 +76,16 @@ export default async function SettingsPage() {
             </CardContent>
           </Card>
           <TimeClockSettings settings={clock.settings} locations={clock.locations} />
+          {smtp ? (
+            <Card className="max-w-3xl">
+              <CardHeader>
+                <CardTitle>Email SMTP</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SmtpSettingsForm initial={smtp} />
+              </CardContent>
+            </Card>
+          ) : null}
           <Card>
             <CardHeader><CardTitle>More settings</CardTitle></CardHeader>
             <CardContent className="grid gap-2 text-sm sm:grid-cols-2">

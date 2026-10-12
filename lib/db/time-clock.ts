@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission, requireSession } from "@/lib/auth/session";
 import { assertTimeEditAllowed } from "@/lib/db/phase5";
 import { mutateWorkforceState, readWorkforceState } from "@/lib/db/workforce";
+import { redactSmtpSecrets } from "@/lib/notifications/smtp";
 import { toISODate } from "@/lib/utils";
 import {
   changePayRate,
@@ -87,7 +88,7 @@ export async function getTimeClockData(
     allBreaks: canViewAll
       ? state.timeBreaks
       : state.timeBreaks.filter((item) => entryIds.has(item.timeEntryId)),
-    settings: state.settings,
+    settings: redactSmtpSecrets(state.settings),
     locations: state.locations,
     departments: state.departments,
     positions: state.positions,

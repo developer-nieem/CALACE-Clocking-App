@@ -1,6 +1,9 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
-import { mutateWorkforceState } from "@/lib/db/workforce";
+import { mutateWorkforceState, readWorkforceState } from "@/lib/db/workforce";
+import { encryptSecret, encryptionConfigured } from "@/lib/security/secrets";
+import { smtpSettingsSchema } from "@/lib/validations/smtp";
+import { toPublicSmtpSettings } from "@/lib/notifications/smtp";
 import type { GeofenceEnforcement } from "@/types";
 
 export async function updateClockSettings(input: {
@@ -32,4 +35,43 @@ export async function updateWorkLocation(input: {
   });
   revalidatePath("/settings");
   revalidatePath("/time-clock");
+}
+
+export async function getSmtpSettingsPublic() {
+  await requirePermission("settings.manage");
+  const state = await readWorkforceState();
+  return toPublicSmtpSettings(state.settings);
+}
+
+export async function saveSmtpSettings(input: unknown) {
+  const actor = await requirePermission("settings.manage");
+  const parsed = smtpSettingsSchema.parse(input);
+  await mutateWorkforceState((state) => {
+    const previous = state.settings.smtpPasswordEncrypted ?? null;
+    let nextPassword = previous;
+    if (parsed.password) {
+      if (!encryptionConfigured()) {
+        throw new Error("APP_ENCRYPTION_KEY is required before an SMTP password can be saved.");
+      }
+      nextPassword = encryptSecret(parsed.password);
+    }
+    if (!parsed.enabled && !parsed.host) {
+      nextPassword = null;
+    }
+    if (parsed.enabled && !nextPassword && parsed.username) {
+      throw new Error("Enter the SMTP password.");
+    }
+    Object.assign(state.settings, {
+      smtpEnabled: parsed.enabled,
+      smtpHost: parsed.host || null,
+      smtpPort: parsed.port,
+      smtpSecure: parsed.secure,
+      smtpUsername: parsed.username || null,
+      smtpPasswordEncrypted: nextPassword,
+      smtpFromEmail: parsed.fromEmail || null,
+      smtpFromName: parsed.fromName || null,
+    });
+  }, actor.organizationId);
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
 }

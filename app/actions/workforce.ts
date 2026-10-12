@@ -29,6 +29,7 @@ import {
 } from "@/lib/validations/time-clock";
 import type { DeviceLocation } from "@/types";
 import {
+  saveSmtpSettings,
   updateClockSettings,
   updateWorkLocation,
 } from "@/lib/db/settings";
@@ -328,5 +329,26 @@ export async function updateWorkLocationAction(input: unknown) {
     return { ok: true as const };
   } catch (error) {
     return safeError(error, "Unable to update work location.");
+  }
+}
+
+export async function saveSmtpSettingsAction(input: unknown) {
+  try {
+    await withSessionOrganization(() => saveSmtpSettings(input));
+    return { ok: true as const };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { ok: false as const, error: error.issues[0]?.message ?? "Check the SMTP fields." };
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (
+      message.includes("SMTP") ||
+      message.includes("APP_ENCRYPTION") ||
+      message.includes("password") ||
+      message.includes("From email")
+    ) {
+      return { ok: false as const, error: message };
+    }
+    return safeError(error, "Unable to save SMTP settings.");
   }
 }

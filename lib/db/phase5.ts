@@ -1173,8 +1173,41 @@ export async function saveDashboardPreference(hiddenWidgets: string[]) {
         userId: user.id,
         hiddenWidgets,
         widgetOrder: [],
+        activityEmailInstructorIds: [],
       });
     }
-  });
+  }, user.organizationId);
+  revalidatePath("/dashboard");
+}
+
+export async function saveActivityEmailInstructors(instructorIds: string[]) {
+  const user = await requirePermission("users.read");
+  if (user.role !== "admin" && user.role !== "super_admin") {
+    throw new Error("Only admins can choose instructor activity emails.");
+  }
+  const requested = new Set(instructorIds.filter((id) => typeof id === "string" && id.length > 0));
+  await mutateWorkforceState((raw) => {
+    const state = ensurePhase5(raw);
+    const validIds = state.profiles
+      .filter(
+        (profile) =>
+          profile.employeeType === "instructor" &&
+          profile.employmentStatus === "active" &&
+          requested.has(profile.id),
+      )
+      .map((profile) => profile.id);
+    const existing = state.dashboardPreferences.find((item) => item.userId === user.id);
+    if (existing) {
+      existing.activityEmailInstructorIds = validIds;
+    } else {
+      state.dashboardPreferences.push({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        hiddenWidgets: [],
+        widgetOrder: [],
+        activityEmailInstructorIds: validIds,
+      });
+    }
+  }, user.organizationId);
   revalidatePath("/dashboard");
 }

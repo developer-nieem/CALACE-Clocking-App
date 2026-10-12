@@ -6,6 +6,7 @@ import { TopNav } from "@/components/layout/top-nav";
 import { PwaInstallBanner } from "@/components/layout/pwa-install";
 import { MobileNav } from "@/components/phase4/mobile-nav";
 import { LocationPermissionPrompt } from "@/components/time-clock/location-permission";
+import { ActivitySnapshotWatcher } from "@/components/dashboard/activity-snapshot-watcher";
 import type { Profile, SessionUser, Shift, TaskItem } from "@/types";
 
 export function AppShell({
@@ -76,6 +77,7 @@ export function AppShell({
         <main className="flex-1 p-4 pb-24 md:p-6 lg:pb-6">
           <PwaInstallBanner />
           <LocationPermissionPrompt />
+          <ActivitySnapshotWatcher enabled={user.employeeType === "instructor"} />
           {children}
         </main>
         <MobileNav />

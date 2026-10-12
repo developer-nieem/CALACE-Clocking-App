@@ -8,6 +8,6 @@ export async function sendTestEmail(to: string) {
   return sendNotificationEmail({
     to: recipient,
     template: "task_assigned",
-    message: "CAL ACE staging test email. If you received this, Resend delivery is working.",
+    message: "CAL ACE test email. If you received this, SMTP or Resend delivery is working.",
   });
 }

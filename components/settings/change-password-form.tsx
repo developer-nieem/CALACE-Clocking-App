@@ -16,6 +16,7 @@ export function ChangePasswordForm() {
   return (
     <form
       className="space-y-4"
+      data-no-activity-snapshot="true"
       onSubmit={(event) => {
         event.preventDefault();
         startTransition(async () => {

@@ -1,6 +1,7 @@
 import { requireSession } from "@/lib/auth/session";
 import { readWorkforceState } from "@/lib/db/workforce";
 import { searchCatalog } from "@/lib/db/phase5";
+import { emailDeliveryConfigured, redactSmtpSecrets } from "@/lib/notifications/smtp";
 import { isManager } from "@/lib/permissions";
 import { fullName, minutesToHoursLabel, toISODate } from "@/lib/utils";
 import type { AttendanceRow, AttendanceStatus } from "@/types";
@@ -107,6 +108,8 @@ export async function getDashboardData() {
     ),
   };
 
+  const dashboardPreferences = state.dashboardPreferences ?? [];
+
   return {
     user,
     manager,
@@ -131,13 +134,16 @@ export async function getDashboardData() {
     positions: state.positions,
     timeEntries: state.timeEntries,
     timeBreaks: state.timeBreaks,
-    settings: state.settings,
+    settings: redactSmtpSecrets(state.settings),
     lookups: {
       locations: state.locations,
       departments: state.departments,
       positions: state.positions,
     },
     searchItems: searchCatalog(user, state).items,
+    activityEmailInstructorIds:
+      dashboardPreferences.find((pref) => pref.userId === user.id)?.activityEmailInstructorIds ?? [],
+    emailConfigured: emailDeliveryConfigured(state.settings),
   };
 }
 

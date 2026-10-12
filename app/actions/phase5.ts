@@ -38,6 +38,7 @@ import {
   saveTag,
   saveSavedView,
   saveDashboardPreference,
+  saveActivityEmailInstructors,
 } from "@/lib/db/phase5";
 
 async function limited(key: string, limit = 30) {
@@ -200,5 +201,10 @@ export async function saveSavedViewAction(input: { module: "users" | "schedule" 
 }
 
 export async function saveDashboardPreferenceAction(hiddenWidgets: string[]) {
-  return saveDashboardPreference(hiddenWidgets);
+  return withSessionOrganization(() => saveDashboardPreference(hiddenWidgets));
+}
+
+export async function saveActivityEmailInstructorsAction(instructorIds: string[]) {
+  await limited("activity-email-instructors", 20);
+  return withSessionOrganization(() => saveActivityEmailInstructors(instructorIds));
 }

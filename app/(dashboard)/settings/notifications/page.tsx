@@ -8,7 +8,7 @@ export default async function NotificationSettingsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Notification preferences"
-        description="In-app alerts always work. Email sends only when Resend is configured, and a failed email does not block the action."
+        description="In-app alerts always work. Email sends when SMTP is saved in Settings or Resend is configured. A failed email does not block the action."
       />
       <PreferenceForm />
     </div>

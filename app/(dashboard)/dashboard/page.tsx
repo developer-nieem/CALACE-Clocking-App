@@ -12,6 +12,7 @@ import { formatDuration } from "@/lib/time-clock/calculations";
 import { getPhase5Context } from "@/lib/db/phase5";
 import { onboardingProgress } from "@/lib/phase5/domain";
 import { DashboardCustomize } from "@/components/phase5/forms";
+import { InstructorActivityEmailCard } from "@/components/dashboard/instructor-activity-email";
 import Link from "next/link";
 
 export default async function DashboardPage() {
@@ -156,6 +157,13 @@ export default async function DashboardPage() {
       />
       {data.user.permissions.includes("settings.manage") ? (
         <DashboardCustomize hidden={hiddenWidgets} />
+      ) : null}
+      {data.user.role === "admin" || data.user.role === "super_admin" ? (
+        <InstructorActivityEmailCard
+          instructors={data.instructors.filter((profile) => profile.employmentStatus === "active")}
+          selectedIds={data.activityEmailInstructorIds}
+          emailConfigured={data.emailConfigured}
+        />
       ) : null}
       <StatCards stats={data.stats} />
       {!hiddenWidgets.includes("attendance") ? (

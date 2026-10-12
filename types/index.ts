@@ -333,7 +333,26 @@ export type OrganizationSettings = {
   lastAutomationRunAt?: string | null;
   lastAutomationStatus?: string | null;
   lastAutomationDurationMs?: number | null;
+  smtpEnabled?: boolean;
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpSecure?: boolean;
+  smtpUsername?: string | null;
+  smtpPasswordEncrypted?: string | null;
+  smtpFromEmail?: string | null;
+  smtpFromName?: string | null;
   featureFlags?: Partial<Record<"ai_scheduler" | "chat" | "calendar_sync" | "automations" | "facility_billing" | "forms" | "knowledge_base" | "pwa", boolean>>;
+};
+
+export type SmtpSettingsPublic = {
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  fromEmail: string;
+  fromName: string;
+  passwordSet: boolean;
 };
 
 export type ChecklistItem = {
@@ -1149,6 +1168,7 @@ export type DashboardPreference = {
   userId: string;
   hiddenWidgets: string[];
   widgetOrder: string[];
+  activityEmailInstructorIds?: string[];
 };
 
 export type Phase5Collections = {
