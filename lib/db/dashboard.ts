@@ -108,8 +108,6 @@ export async function getDashboardData() {
     ),
   };
 
-  const dashboardPreferences = state.dashboardPreferences ?? [];
-
   return {
     user,
     manager,
@@ -141,8 +139,9 @@ export async function getDashboardData() {
       positions: state.positions,
     },
     searchItems: searchCatalog(user, state).items,
-    activityEmailInstructorIds:
-      dashboardPreferences.find((pref) => pref.userId === user.id)?.activityEmailInstructorIds ?? [],
+    activityEmailInstructorIds: state.profiles
+      .filter((profile) => profile.screenCaptureEnabled)
+      .map((profile) => profile.id),
     emailConfigured: emailDeliveryConfigured(state.settings),
   };
 }

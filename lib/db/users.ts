@@ -79,6 +79,7 @@ export async function inviteUser(input: unknown) {
       qualifications: [],
       locationIds: [],
       roles: [parsed.role],
+      screenCaptureEnabled: Boolean(parsed.screenCaptureEnabled),
     };
     hashes.set(created.id, passwordHash);
     state.profiles.unshift(created);
@@ -137,6 +138,7 @@ export async function updateUser(input: unknown) {
       defaultWeeklyHours: parsed.weeklyTargetHours ?? 40,
       maxWeeklyHours: parsed.maximumWeeklyHours ?? 40,
       roles: [parsed.role],
+      screenCaptureEnabled: Boolean(parsed.screenCaptureEnabled),
     };
     if (rateChanged && parsed.hourlyRate !== null) {
       changePayRate(state, actor.id, {

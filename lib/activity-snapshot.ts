@@ -22,28 +22,33 @@ export function sanitizeActivityPath(path: unknown) {
   return path;
 }
 
+export function employeeScreenCaptureEnabled(
+  employeeId: string,
+  profiles: Array<{ id: string; screenCaptureEnabled?: boolean }>,
+) {
+  return Boolean(profiles.find((profile) => profile.id === employeeId)?.screenCaptureEnabled);
+}
+
 export function activitySnapshotRecipients(input: {
-  instructorId: string;
-  profiles: Array<{ id: string; email: string }>;
-  preferences: Array<{ userId: string; activityEmailInstructorIds?: string[] }>;
+  profiles: Array<{
+    id: string;
+    email: string;
+    roles: string[];
+    employmentStatus?: string;
+  }>;
 }) {
-  const adminIds = new Set(
-    input.preferences
-      .filter((pref) => pref.activityEmailInstructorIds?.includes(input.instructorId))
-      .map((pref) => pref.userId),
-  );
   return [
     ...new Set(
       input.profiles
-        .filter((profile) => adminIds.has(profile.id) && profile.email.includes("@"))
+        .filter(
+          (profile) =>
+            (profile.roles.includes("admin") || profile.roles.includes("super_admin")) &&
+            profile.email.includes("@") &&
+            profile.employmentStatus !== "inactive" &&
+            profile.employmentStatus !== "terminated" &&
+            profile.employmentStatus !== "archived",
+        )
         .map((profile) => profile.email.trim().toLowerCase()),
     ),
   ];
-}
-
-export function instructorIsWatched(
-  instructorId: string,
-  preferences: Array<{ activityEmailInstructorIds?: string[] }>,
-) {
-  return preferences.some((pref) => pref.activityEmailInstructorIds?.includes(instructorId));
 }

@@ -77,7 +77,9 @@ export function AppShell({
         <main className="flex-1 p-4 pb-24 md:p-6 lg:pb-6">
           <PwaInstallBanner />
           <LocationPermissionPrompt />
-          <ActivitySnapshotWatcher enabled={user.employeeType === "instructor"} />
+          <ActivitySnapshotWatcher
+            enabled={user.role === "instructor" || user.role === "staff" || user.role === "scheduler"}
+          />
           {children}
         </main>
         <MobileNav />

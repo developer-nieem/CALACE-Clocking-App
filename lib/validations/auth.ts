@@ -36,6 +36,7 @@ export const inviteUserSchema = z.object({
   weeklyTargetHours: z.coerce.number().min(0).max(80).nullable(),
   maximumWeeklyHours: z.coerce.number().min(0).max(80).nullable(),
   hireDate: z.string().optional().nullable(),
+  screenCaptureEnabled: z.boolean().optional().default(false),
 });
 
 export const updateUserSchema = inviteUserSchema.omit({ password: true }).extend({

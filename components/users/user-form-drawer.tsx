@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -87,6 +88,7 @@ export function UserFormDrawer({
     user?.primaryLocationId ?? "",
   );
   const [status, setStatus] = useState(user?.employmentStatus ?? "invited");
+  const [screenCapture, setScreenCapture] = useState(Boolean(user?.screenCaptureEnabled));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -134,6 +136,7 @@ export function UserFormDrawer({
                 ),
                 hireDate: String(form.get("hireDate") ?? "") || null,
                 employmentStatus: status,
+                screenCaptureEnabled: screenCapture,
               };
               const result = user
                 ? await updateUserAction(payload)
@@ -166,6 +169,19 @@ export function UserFormDrawer({
             required={!user}
           />
           <Field label="Phone" name="phone" defaultValue={user?.phone ?? ""} />
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-3 text-sm">
+            <Checkbox
+              className="mt-0.5"
+              checked={screenCapture}
+              onCheckedChange={(value) => setScreenCapture(value === true)}
+            />
+            <span>
+              <span className="font-medium">Screen capture</span>
+              <span className="mt-1 block text-muted-foreground">
+                Email admins a random screenshot of this employee's CAL ACE screen about every 3-7 minutes while they are signed in. Pictures are not saved in the database.
+              </span>
+            </span>
+          </label>
           <div className="space-y-2">
             <Label>Employee Type</Label>
             <Select

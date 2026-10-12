@@ -28,8 +28,8 @@ export function InstructorActivityEmailCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Choose which instructors send you a screenshot of their CAL ACE screen at a random interval
-          (about 3, 5, or 7 minutes). Pictures are emailed only — they are not saved in the database.
+          This matches the Screen capture check mark on Add / Edit employee. Checked people
+          email admins a screenshot at a random 3–7 minute interval. Pictures are not saved in the database.
         </p>
         {!emailConfigured ? (
           <p className="text-sm text-amber-700">

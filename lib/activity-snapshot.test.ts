@@ -3,7 +3,7 @@ import {
   ACTIVITY_SNAPSHOT_MAX_MINUTES,
   ACTIVITY_SNAPSHOT_MIN_MINUTES,
   activitySnapshotRecipients,
-  instructorIsWatched,
+  employeeScreenCaptureEnabled,
   parseActivitySnapshotImage,
   randomActivitySnapshotDelayMs,
   sanitizeActivityPath,
@@ -23,21 +23,22 @@ describe("activity snapshot", () => {
     expect(seen.size).toBeGreaterThan(1);
   });
 
-  it("emails only admins who selected that instructor", () => {
+  it("emails active admins when screen capture is on", () => {
     expect(
       activitySnapshotRecipients({
-        instructorId: "ins-1",
         profiles: [
-          { id: "admin-1", email: "admin@calace.team" },
-          { id: "admin-2", email: "other@calace.team" },
-          { id: "ins-1", email: "yan@school.com" },
-        ],
-        preferences: [
-          { userId: "admin-1", activityEmailInstructorIds: ["ins-1"] },
-          { userId: "admin-2", activityEmailInstructorIds: ["ins-2"] },
+          { id: "admin-1", email: "admin@calace.team", roles: ["admin"], employmentStatus: "active" },
+          { id: "admin-2", email: "gone@calace.team", roles: ["admin"], employmentStatus: "archived" },
+          { id: "ins-1", email: "yan@school.com", roles: ["instructor"], employmentStatus: "active" },
         ],
       }),
     ).toEqual(["admin@calace.team"]);
+    expect(
+      employeeScreenCaptureEnabled("ins-1", [
+        { id: "ins-1", screenCaptureEnabled: true },
+        { id: "ins-2", screenCaptureEnabled: false },
+      ]),
+    ).toBe(true);
   });
 
   it("rejects non-jpeg payloads and unsafe paths", () => {
@@ -46,6 +47,5 @@ describe("activity snapshot", () => {
     expect(parseActivitySnapshotImage(jpeg)).toBe(`${"A".repeat(80)}=`);
     expect(sanitizeActivityPath("https://evil.example/x")).toBe("/dashboard");
     expect(sanitizeActivityPath("/time-clock")).toBe("/time-clock");
-    expect(instructorIsWatched("ins-1", [{ activityEmailInstructorIds: ["ins-1"] }])).toBe(true);
   });
 });

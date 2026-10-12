@@ -1196,18 +1196,12 @@ export async function saveActivityEmailInstructors(instructorIds: string[]) {
           requested.has(profile.id),
       )
       .map((profile) => profile.id);
-    const existing = state.dashboardPreferences.find((item) => item.userId === user.id);
-    if (existing) {
-      existing.activityEmailInstructorIds = validIds;
-    } else {
-      state.dashboardPreferences.push({
-        id: crypto.randomUUID(),
-        userId: user.id,
-        hiddenWidgets: [],
-        widgetOrder: [],
-        activityEmailInstructorIds: validIds,
-      });
+    const selected = new Set(validIds);
+    for (const profile of state.profiles) {
+      if (profile.employeeType !== "instructor") continue;
+      profile.screenCaptureEnabled = selected.has(profile.id);
     }
   }, user.organizationId);
   revalidatePath("/dashboard");
+  revalidatePath("/users");
 }

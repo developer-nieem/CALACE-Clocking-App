@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser, withSessionOrganization } from "@/lib/auth/session";
 import {
   activitySnapshotRecipients,
-  instructorIsWatched,
+  employeeScreenCaptureEnabled,
   parseActivitySnapshotImage,
   sanitizeActivityPath,
 } from "@/lib/activity-snapshot";
@@ -17,13 +17,10 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ enabled: false }, { status: 401 });
-  if (user.employeeType !== "instructor") {
-    return NextResponse.json({ enabled: false });
-  }
   try {
     const state = await readWorkforceState(user.organizationId);
     return NextResponse.json({
-      enabled: instructorIsWatched(user.id, state.dashboardPreferences ?? []),
+      enabled: employeeScreenCaptureEnabled(user.id, state.profiles),
     });
   } catch {
     return NextResponse.json({ enabled: false });
@@ -33,9 +30,6 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.employeeType !== "instructor") {
-    return NextResponse.json({ error: "Only instructor sessions send activity snapshots." }, { status: 403 });
-  }
 
   const limited = await rateLimit(rateLimitKey(["activity-snapshot", user.id]), 12, 60 * 60_000);
   if (!limited.success) {
@@ -66,15 +60,10 @@ export async function POST(request: Request) {
   try {
     const result = await withSessionOrganization(async () => {
       const state = await readWorkforceState(user.organizationId);
-      const preferences = state.dashboardPreferences ?? [];
-      if (!instructorIsWatched(user.id, preferences)) {
+      if (!employeeScreenCaptureEnabled(user.id, state.profiles)) {
         return { skipped: true as const };
       }
-      const recipients = activitySnapshotRecipients({
-        instructorId: user.id,
-        profiles: state.profiles,
-        preferences,
-      });
+      const recipients = activitySnapshotRecipients({ profiles: state.profiles });
       if (!recipients.length) return { skipped: true as const };
 
       const instructorName = fullName(user.firstName, user.lastName);

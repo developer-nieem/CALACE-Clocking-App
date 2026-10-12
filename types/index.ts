@@ -102,6 +102,7 @@ export type Profile = {
   qualificationRecords?: QualificationRecord[];
   locationIds: string[];
   roles: AppRole[];
+  screenCaptureEnabled?: boolean;
 };
 
 export type Shift = {
