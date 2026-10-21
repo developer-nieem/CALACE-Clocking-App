@@ -26,6 +26,9 @@ export default async function SettingsPage() {
           <CardContent className="space-y-2 text-sm">
             <p>{user.organizationName}</p>
             <p className="text-muted-foreground">Clock-in grace: 15 minutes before shift start.</p>
+            <p className="text-muted-foreground">
+              Assigned staff get a daily email the day before a published shift, then another 2 hours before start (when SMTP is configured).
+            </p>
             <p className="text-muted-foreground">Overtime threshold: 40 hours / week.</p>
             <p className="text-muted-foreground">
               Qualification enforcement: {clock.settings.qualificationEnforcement ?? "warning"}. Week starts Monday.

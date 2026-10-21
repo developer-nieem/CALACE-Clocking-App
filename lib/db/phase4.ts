@@ -3,7 +3,18 @@ import { mutateWorkforceState, readWorkforceState, type WorkforceState } from "@
 import { isDatabaseMode } from "@/lib/env";
 import { listOrganizationIds, withJobLock } from "@/lib/db/neon";
 import { requirePermission } from "@/lib/auth/session";
-import { builtinAutomationTemplates, dueShiftReminders, executionKey, planAutomationRun, recordRun } from "@/lib/phase4/automations";
+import { sendNotificationEmail } from "@/lib/notifications/email";
+import {
+  builtinAutomationTemplates,
+  dueDailyShiftReminders,
+  dueShiftReminders,
+  executionKey,
+  planAutomationRun,
+  recordRun,
+  SHIFT_DAILY_REMINDER_AUTOMATION_ID,
+  SHIFT_REMINDER_AUTOMATION_ID,
+  SHIFT_REMINDER_MINUTES,
+} from "@/lib/phase4/automations";
 import {
   answerScheduleQuestion,
   applyRecommendationAssignments,
@@ -368,26 +379,92 @@ export async function runDueAutomations(now = new Date()) {
   return runDueAutomationsForOrg(now);
 }
 
+type PendingShiftReminderEmail = {
+  to: string;
+  title: string;
+  date: string;
+  startTime: string;
+  kind: "two_hour" | "daily";
+};
+
 async function runDueAutomationsForOrg(now: Date) {
   const started = Date.now();
-  return mutateWorkforceState((state) => {
+  const result = await mutateWorkforceState((state) => {
     const organizationId = orgOf(state);
     state.settings.lastAutomationRunAt = now.toISOString();
     state.settings.lastAutomationDurationMs = 0;
     state.settings.lastAutomationStatus = "running";
-    if (state.settings.automationEngineEnabled === false) {
-      state.settings.lastAutomationStatus = "skipped";
-      state.settings.lastAutomationDurationMs = Date.now() - started;
-      return { ran: 0, status: "skipped" as const };
+    if (state.settings.shiftReminderMinutes == null) {
+      state.settings.shiftReminderMinutes = SHIFT_REMINDER_MINUTES;
     }
-    let ran = 0;
     const keys = state.automationRuns.filter((run) => run.status === "success").map((run) => run.executionKey);
+    const timeZone = state.settings.timezone || "America/Los_Angeles";
     const reminders = dueShiftReminders(
       state.shifts,
       state.profiles,
       now,
-      state.settings.shiftReminderMinutes ?? 30,
+      state.settings.shiftReminderMinutes ?? SHIFT_REMINDER_MINUTES,
+      timeZone,
     );
+    const dailyReminders = dueDailyShiftReminders(state.shifts, state.profiles, now, timeZone);
+    const pendingEmails: PendingShiftReminderEmail[] = [];
+    let ran = 0;
+    const queueReminder = (
+      reminder: (typeof reminders)[number],
+      automationId: string,
+      kind: PendingShiftReminderEmail["kind"],
+      title: string,
+      message: string,
+    ) => {
+      const key = executionKey(automationId, reminder.entityId, reminder.eventTime);
+      if (keys.includes(key)) return;
+      const profile = state.profiles.find((item) => item.id === reminder.userId);
+      notify(state, reminder.userId, title, message, reminder.shift.id);
+      if (profile?.email?.includes("@")) {
+        pendingEmails.push({
+          to: profile.email.trim().toLowerCase(),
+          title: reminder.shift.title,
+          date: reminder.shift.date,
+          startTime: reminder.shift.startTime,
+          kind,
+        });
+      }
+      state.automationRuns.unshift(
+        recordRun({
+          organizationId,
+          automationId,
+          key,
+          status: "success",
+          now: now.toISOString(),
+          inputData: { shiftId: reminder.shift.id, userId: reminder.userId },
+        }),
+      );
+      keys.push(key);
+      ran += 1;
+    };
+    for (const reminder of dailyReminders) {
+      queueReminder(
+        reminder,
+        SHIFT_DAILY_REMINDER_AUTOMATION_ID,
+        "daily",
+        "Tomorrow's shift",
+        `${reminder.shift.title} is tomorrow at ${reminder.shift.startTime}.`,
+      );
+    }
+    for (const reminder of reminders) {
+      queueReminder(
+        reminder,
+        SHIFT_REMINDER_AUTOMATION_ID,
+        "two_hour",
+        "Shift reminder",
+        `${reminder.shift.title} starts at ${reminder.shift.startTime} on ${reminder.shift.date}. This is your 2-hour reminder.`,
+      );
+    }
+    if (state.settings.automationEngineEnabled === false) {
+      state.settings.lastAutomationStatus = ran > 0 ? "success" : "skipped";
+      state.settings.lastAutomationDurationMs = Date.now() - started;
+      return { ran, status: ran > 0 ? ("success" as const) : ("skipped" as const), pendingEmails };
+    }
     for (const automation of state.automations.filter((item) => item.isEnabled && item.triggerType === "shift_starting")) {
       for (const reminder of reminders) {
         const planned = planAutomationRun({
@@ -427,6 +504,18 @@ async function runDueAutomationsForOrg(now: Date) {
     }
     state.settings.lastAutomationStatus = "success";
     state.settings.lastAutomationDurationMs = Date.now() - started;
-    return { ran, status: "success" as const };
+    return { ran, status: "success" as const, pendingEmails };
   });
+  for (const email of result.pendingEmails ?? []) {
+    const safeTitle = email.title.replace(/[<>]/g, "");
+    const daily = email.kind === "daily";
+    await sendNotificationEmail({
+      to: email.to,
+      template: daily ? "shift_daily_reminder" : "shift_reminder",
+      message: daily
+        ? `Reminder: your shift "${safeTitle}" is tomorrow at ${email.startTime} (${email.date}).`
+        : `Your shift "${safeTitle}" starts at ${email.startTime} on ${email.date}. This is your 2-hour reminder. Clock in when you arrive.`,
+    }).catch(() => ({ sent: false as const, reason: "provider_error" as const }));
+  }
+  return { ran: result.ran, status: result.status };
 }

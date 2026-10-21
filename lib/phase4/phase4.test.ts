@@ -8,7 +8,13 @@ import {
   scheduleHealth,
   type SchedulerContext,
 } from "@/lib/phase4/scheduler";
-import { executionKey, planAutomationRun } from "@/lib/phase4/automations";
+import {
+  dueDailyShiftReminders,
+  dueShiftReminders,
+  executionKey,
+  planAutomationRun,
+  SHIFT_REMINDER_MINUTES,
+} from "@/lib/phase4/automations";
 import type { OrganizationSettings, Profile, Shift } from "@/types";
 
 const settings = {
@@ -288,5 +294,32 @@ describe("Phase 4 automations", () => {
     });
     expect(result.status).toBe("skipped");
     expect(result.reason).toBe("disabled");
+  });
+
+  it("finds published shifts two hours before start in the org timezone", () => {
+    const published = shift({
+      status: "published",
+      instructorIds: ["maria"],
+    });
+    const maria = employee("maria", "Maria");
+    const twoHoursBefore = new Date("2026-10-05T14:10:00.000Z");
+    const tooEarly = new Date("2026-10-05T12:30:00.000Z");
+    expect(SHIFT_REMINDER_MINUTES).toBe(120);
+    expect(dueShiftReminders([published], [maria], twoHoursBefore)).toHaveLength(1);
+    expect(dueShiftReminders([published], [maria], tooEarly)).toHaveLength(0);
+  });
+
+  it("sends a daily reminder on the calendar day before the shift", () => {
+    const published = shift({
+      status: "published",
+      date: "2026-10-06",
+      startTime: "09:00",
+      instructorIds: ["maria"],
+    });
+    const maria = employee("maria", "Maria");
+    const dayBefore = new Date("2026-10-05T18:00:00.000Z");
+    const twoDaysBefore = new Date("2026-10-04T18:00:00.000Z");
+    expect(dueDailyShiftReminders([published], [maria], dayBefore)).toHaveLength(1);
+    expect(dueDailyShiftReminders([published], [maria], twoDaysBefore)).toHaveLength(0);
   });
 });

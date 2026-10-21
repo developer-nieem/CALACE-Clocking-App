@@ -16,7 +16,9 @@ export type EmailTemplate =
   | "open_shift_approved"
   | "trade_approved"
   | "task_assigned"
-  | "qualification_expiring";
+  | "qualification_expiring"
+  | "shift_reminder"
+  | "shift_daily_reminder";
 
 export type SendEmailResult =
   | { sent: true; via: "smtp" | "resend" }
@@ -33,6 +35,8 @@ export function renderEmail(template: EmailTemplate, message: string) {
     trade_approved: "Shift trade approved",
     task_assigned: "Task assigned",
     qualification_expiring: "Qualification expiring",
+    shift_reminder: "Shift reminder",
+    shift_daily_reminder: "Tomorrow's shift",
   };
   return `<!doctype html><html><body style="margin:0;background:#F7F8FA;font-family:Arial,sans-serif;color:#0D2A43">
     <div style="max-width:560px;margin:24px auto;background:#fff;border:1px solid #e6e8eb;border-radius:12px;padding:24px">
