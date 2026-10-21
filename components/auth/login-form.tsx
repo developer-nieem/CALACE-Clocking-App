@@ -22,14 +22,10 @@ export function LoginForm({ demoMode = false }: { demoMode?: boolean }) {
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader>
-        <div className="mb-2 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent font-bold text-primary">
-            CA
-          </div>
-          <div>
-            <CardTitle>CAL ACE Team</CardTitle>
-            <p className="text-sm text-muted-foreground">Sign in to workforce operations</p>
-          </div>
+        <div className="mb-2 flex flex-col items-center text-center">
+          <img src="/logo.png" alt="CALACE Team" className="mb-3 h-24 w-24 rounded-xl object-cover" />
+          <CardTitle>CALACE Team</CardTitle>
+          <p className="text-sm text-muted-foreground">Sign in to workforce operations</p>
         </div>
       </CardHeader>
       <CardContent>

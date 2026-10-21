@@ -1,9 +1,10 @@
-const CACHE = "calace-pwa-v1";
+const CACHE = "calace-pwa-v2";
 const PRECACHE = [
+  "/logo.png",
+  "/favicon.png",
   "/icon-192.png",
   "/icon-512.png",
   "/apple-touch-icon.png",
-  "/icon.svg",
   "/manifest.webmanifest",
 ];
 
