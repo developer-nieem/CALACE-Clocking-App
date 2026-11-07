@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
+import { readDeviceLocation, startLocationWatch } from "@/lib/time-clock/browser-location";
 
 type PermissionState = "checking" | "granted" | "prompt" | "denied" | "unsupported";
 
@@ -13,11 +14,9 @@ export function LocationPermissionPrompt() {
       setStatus("unsupported");
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      () => setStatus("granted"),
-      () => setStatus("denied"),
-      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 60_000 },
-    );
+    void readDeviceLocation()
+      .then(() => setStatus("granted"))
+      .catch(() => setStatus("denied"));
   }
 
   useEffect(() => {
@@ -45,6 +44,10 @@ export function LocationPermissionPrompt() {
       if (permission) permission.onchange = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (status === "granted") return startLocationWatch();
+  }, [status]);
 
   if (status === "checking" || status === "granted") return null;
 

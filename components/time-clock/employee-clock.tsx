@@ -15,6 +15,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  cachedDeviceLocation,
+  readDeviceLocation,
+  startLocationWatch,
+} from "@/lib/time-clock/browser-location";
+import {
   calculateEntryTotals,
   formatCurrency,
   formatDuration,
@@ -87,41 +92,26 @@ export function EmployeeClock({
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => startLocationWatch(), []);
+
   const status = active?.status ?? "off_clock";
   const workplace = locations.find(
     (item) => item.id === (todayShift?.locationId ?? profile.primaryLocationId),
   );
 
   async function getLocation(required: boolean): Promise<DeviceLocation | null> {
-    if (!("geolocation" in navigator)) {
+    const cached = cachedDeviceLocation();
+    if (cached) return cached;
+    try {
+      return await readDeviceLocation();
+    } catch {
       if (required) {
-        throw new Error("Location is required, but this browser does not support geolocation.");
+        throw new Error(
+          "Location access is required to clock in for this workplace. Please enable location permission for this site and try again.",
+        );
       }
       return null;
     }
-    return new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) =>
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: position.timestamp,
-          }),
-        () => {
-          if (required) {
-            reject(
-              new Error(
-                "Location access is required to clock in for this workplace. Please enable location permission for this site and try again.",
-              ),
-            );
-          } else {
-            resolve(null);
-          }
-        },
-        { enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 },
-      );
-    });
   }
 
   function perform(
@@ -283,7 +273,7 @@ export function EmployeeClock({
               onClick={() => perform("clock_in")}
             >
               <Clock3 className="h-5 w-5" />
-              {pending ? "Processing..." : "Enable Location & Clock In"}
+              Clock In
             </Button>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -295,7 +285,7 @@ export function EmployeeClock({
                 onClick={() => perform(status === "on_break" ? "end_break" : "start_break")}
               >
                 <Coffee className="h-5 w-5" />
-                {pending ? "Processing..." : status === "on_break" ? "End break" : "Break"}
+                {status === "on_break" ? "End break" : "Break"}
               </Button>
               <Button
                 size="lg"
@@ -305,7 +295,7 @@ export function EmployeeClock({
                 onClick={() => perform("clock_out")}
               >
                 <LogOut className="h-5 w-5" />
-                {pending ? "Processing..." : "End"}
+                End
               </Button>
             </div>
           )}

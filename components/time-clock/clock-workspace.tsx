@@ -13,7 +13,11 @@ import {
 } from "@/app/actions/workforce";
 import { GeoLink } from "@/components/time-clock/geo-link";
 import { calculateEntryTotals } from "@/lib/time-clock/calculations";
-import { readDeviceLocation } from "@/lib/time-clock/browser-location";
+import {
+  cachedDeviceLocation,
+  readDeviceLocation,
+  startLocationWatch,
+} from "@/lib/time-clock/browser-location";
 import { addDays, formatTimeRange, parseISODate, startOfWeekMonday, toISODate } from "@/lib/utils";
 import type {
   DeviceLocation,
@@ -73,6 +77,13 @@ export function ClockWorkspace({
   const [tab, setTab] = useState<"note" | "log">("note");
   const [note, setNote] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [liveEntries, setLiveEntries] = useState(entries);
+  const [liveBreaks, setLiveBreaks] = useState(breaks);
+
+  useEffect(() => {
+    setLiveEntries(entries);
+    setLiveBreaks(breaks);
+  }, [entries, breaks]);
 
   useEffect(() => {
     const tick = () => setNow(new Date());
@@ -81,9 +92,11 @@ export function ClockWorkspace({
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => startLocationWatch(), []);
+
   const clockNow = now ?? new Date(0);
   const today = toISODate(now ?? new Date());
-  const active = entries.find((entry) => entry.clockOutAt === null) ?? null;
+  const active = liveEntries.find((entry) => entry.clockOutAt === null) ?? null;
   const todayShifts = shifts.filter(
     (shift) =>
       shift.date === today &&
@@ -95,23 +108,23 @@ export function ClockWorkspace({
     (item) => item.id === (active?.clockInLocationId ?? todayShift?.locationId ?? profile.primaryLocationId),
   );
   const activeBreak = active
-    ? breaks.find((item) => item.timeEntryId === active.id && item.breakEndAt === null) ?? null
+    ? liveBreaks.find((item) => item.timeEntryId === active.id && item.breakEndAt === null) ?? null
     : null;
   const onBreak = Boolean(activeBreak);
   const activeTotals = active
     ? calculateEntryTotals(
         active,
-        breaks.filter((item) => item.timeEntryId === active.id),
+        liveBreaks.filter((item) => item.timeEntryId === active.id),
         settings,
         { asOf: clockNow },
       )
     : null;
-  const todayWorked = entries
+  const todayWorked = liveEntries
     .filter((entry) => entry.workDate === today || entry.clockOutAt === null)
     .reduce((sum, entry) => {
       const totals = calculateEntryTotals(
         entry,
-        breaks.filter((item) => item.timeEntryId === entry.id),
+        liveBreaks.filter((item) => item.timeEntryId === entry.id),
         settings,
         { asOf: clockNow },
       );
@@ -123,20 +136,30 @@ export function ClockWorkspace({
     [rangeStart],
   );
   const rangeEnd = days[13];
-  const sheet = useMemo(() => buildSheet(days, entries, breaks, shifts, locations, settings, clockNow), [
-    breaks,
-    clockNow,
-    days,
-    entries,
-    locations,
-    settings,
-    shifts,
-  ]);
+  const sheet = useMemo(
+    () => buildSheet(days, liveEntries, liveBreaks, shifts, locations, settings, clockNow),
+    [liveBreaks, clockNow, days, liveEntries, locations, settings, shifts],
+  );
 
   async function getLocation(required: boolean): Promise<DeviceLocation | null> {
+    const cached = cachedDeviceLocation();
+    if (cached) return cached;
     try {
       return await readDeviceLocation();
     } catch {
+      if (
+        !required &&
+        active &&
+        active.clockInLatitude !== null &&
+        active.clockInLongitude !== null
+      ) {
+        return {
+          latitude: active.clockInLatitude,
+          longitude: active.clockInLongitude,
+          accuracy: active.clockInAccuracy ?? 0,
+          timestamp: Date.now(),
+        };
+      }
       if (required) {
         throw new Error("Location permission is required. Allow location for this site, then try again.");
       }
@@ -144,32 +167,119 @@ export function ClockWorkspace({
     }
   }
 
+  function applyOptimistic(operation: "clock_in" | "start_break" | "end_break" | "clock_out") {
+    const stamp = new Date().toISOString();
+    if (operation === "clock_in") {
+      setLiveEntries((current) => [
+        {
+          id: `optimistic-${profile.id}`,
+          organizationId: profile.organizationId,
+          userId: profile.id,
+          shiftId: todayShift?.id ?? null,
+          workDate: today,
+          clockInAt: stamp,
+          clockOutAt: null,
+          clockInLatitude: null,
+          clockInLongitude: null,
+          clockInAccuracy: null,
+          clockOutLatitude: null,
+          clockOutLongitude: null,
+          clockOutAccuracy: null,
+          clockInLocationId: todayShift?.locationId ?? profile.primaryLocationId,
+          clockOutLocationId: null,
+          clockInDistanceMeters: null,
+          clockOutDistanceMeters: null,
+          clockInGeofenceStatus: null,
+          clockOutGeofenceStatus: null,
+          status: "working",
+          clockStatus: todayShift ? "on_time" : "unscheduled",
+          payRateSnapshot: profile.hourlyRate,
+          notes: null,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+        ...current.filter((entry) => entry.clockOutAt !== null),
+      ]);
+      return;
+    }
+    if (!active) return;
+    if (operation === "start_break") {
+      setLiveEntries((current) =>
+        current.map((entry) =>
+          entry.id === active.id ? { ...entry, status: "on_break", updatedAt: stamp } : entry,
+        ),
+      );
+      setLiveBreaks((current) => [
+        {
+          id: `optimistic-break-${profile.id}`,
+          organizationId: profile.organizationId,
+          timeEntryId: active.id,
+          userId: profile.id,
+          breakStartAt: stamp,
+          breakEndAt: null,
+          breakStartLatitude: null,
+          breakStartLongitude: null,
+          breakStartAccuracy: null,
+          breakEndLatitude: null,
+          breakEndLongitude: null,
+          breakEndAccuracy: null,
+          breakMinutes: null,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+        ...current,
+      ]);
+      return;
+    }
+    if (operation === "end_break") {
+      setLiveEntries((current) =>
+        current.map((entry) =>
+          entry.id === active.id ? { ...entry, status: "working", updatedAt: stamp } : entry,
+        ),
+      );
+      setLiveBreaks((current) =>
+        current.map((item) =>
+          item.timeEntryId === active.id && item.breakEndAt === null
+            ? { ...item, breakEndAt: stamp, updatedAt: stamp }
+            : item,
+        ),
+      );
+      return;
+    }
+    setLiveEntries((current) =>
+      current.map((entry) =>
+        entry.id === active.id
+          ? { ...entry, clockOutAt: stamp, status: "completed", updatedAt: stamp }
+          : entry,
+      ),
+    );
+    setLiveBreaks((current) =>
+      current.map((item) =>
+        item.timeEntryId === active.id && item.breakEndAt === null
+          ? { ...item, breakEndAt: stamp, updatedAt: stamp }
+          : item,
+      ),
+    );
+  }
+
   async function perform(operation: "clock_in" | "start_break" | "end_break" | "clock_out") {
     if (pending) return;
+    if (!navigator.onLine) {
+      const message = "You are offline. Clock actions require an internet connection.";
+      setActionError(message);
+      toast.error(message);
+      return;
+    }
+    const previousEntries = liveEntries;
+    const previousBreaks = liveBreaks;
     setPending(true);
     setActionError(null);
+    applyOptimistic(operation);
     try {
-      if (!navigator.onLine) {
-        throw new Error("You are offline. Clock actions require an internet connection.");
-      }
       const location =
         operation === "clock_in"
           ? await getLocation(true)
-          : await getLocation(true).catch(() => {
-              if (
-                active &&
-                active.clockInLatitude !== null &&
-                active.clockInLongitude !== null
-              ) {
-                return {
-                  latitude: active.clockInLatitude,
-                  longitude: active.clockInLongitude,
-                  accuracy: active.clockInAccuracy ?? 0,
-                  timestamp: Date.now(),
-                };
-              }
-              throw new Error("Location permission is required. Allow location for this site, then try again.");
-            });
+          : await getLocation(true).catch(() => getLocation(false));
       const payload = location
         ? (JSON.parse(JSON.stringify(location)) as DeviceLocation)
         : null;
@@ -182,9 +292,10 @@ export function ClockWorkspace({
               ? await endBreakAction(payload)
               : await clockOutAction(payload);
       if (!result.ok) {
+        setLiveEntries(previousEntries);
+        setLiveBreaks(previousBreaks);
         setActionError(result.error);
         toast.error(result.error);
-        router.refresh();
         return;
       }
       toast.success(
@@ -198,13 +309,14 @@ export function ClockWorkspace({
       );
       router.refresh();
     } catch (error) {
+      setLiveEntries(previousEntries);
+      setLiveBreaks(previousBreaks);
       const message =
         error instanceof Error
           ? error.message
           : "We couldn't confirm your clock action. Please check your connection and try again.";
       setActionError(message);
       toast.error(message);
-      router.refresh();
     } finally {
       setPending(false);
     }
@@ -265,7 +377,7 @@ export function ClockWorkspace({
                     className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-100 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <TimerReset className="h-4 w-4 shrink-0" />
-                    {pending ? "Processing..." : onBreak ? "End break" : "Break"}
+                    {onBreak ? "End break" : "Break"}
                   </button>
                   <button
                     type="button"
@@ -274,7 +386,7 @@ export function ClockWorkspace({
                     className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-red-500 px-2 text-sm font-semibold text-white transition hover:bg-red-600 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Clock3 className="h-4 w-4 shrink-0" />
-                    {pending ? "Processing..." : "End"}
+                    End
                   </button>
                 </div>
                 {actionError ? (
@@ -343,7 +455,7 @@ export function ClockWorkspace({
                   className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-cyan-400 text-white shadow-md transition hover:from-sky-500 hover:to-cyan-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 sm:h-28 sm:w-28"
                 >
                   <Clock3 className="h-5 w-5" />
-                  <span className="mt-1 text-sm font-semibold">{pending ? "Processing..." : "Clock in"}</span>
+                  <span className="mt-1 text-sm font-semibold">Clock in</span>
                 </button>
               </div>
             )}
